@@ -30,6 +30,23 @@ async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
+
+        const menuCollections = client.db('bostrobossDB').collection('menu');
+        const cartCollections = client.db('bostrobossDB').collection('cart');
+
+        app.get('/menu',async(req,res) => {
+            const result = await menuCollections.find().toArray();
+            res.send(result);
+        });
+        app.post('/cart',async(req,res) => {
+            const item = req.body;
+            const result = await cartCollections.insertOne(item);
+            res.send(result);
+        })
+        app.get('/cart',async(req,res) => {
+            const result = await cartCollections.find().toArray();
+            res.send(result)
+        });
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
