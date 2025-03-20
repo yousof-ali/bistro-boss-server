@@ -3,7 +3,7 @@ const app = express();
 const cors = require('cors');
 require('dotenv').config();
 const port = process.env.PORT || 5000;
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 app.use(cors());
 app.use(express.json());
@@ -33,6 +33,42 @@ async function run() {
 
         const menuCollections = client.db('bostrobossDB').collection('menu');
         const cartCollections = client.db('bostrobossDB').collection('cart');
+        const userCollections = client.db('bostrobossDB').collection('users');
+        
+        app.get('/users',async(req,res) => {
+            const result = await userCollections.find().toArray();
+            res.send(result);
+        });
+
+        app.patch('/user/admin/:id',async(req,res) => {
+            const id = req.params.id;
+            const query = {_id:new ObjectId(id)}
+            const updateDoc = {
+                $set:{
+                    role:'Admin'
+                }
+            }
+            const result = await userCollections.updateOne(query,updateDoc);
+            res.send(result);
+        })
+
+        app.delete('/user/:id',async(req,res) => {
+            const id = req.params.id
+            const query = {_id:new ObjectId(id)}
+            const result = await userCollections.deleteOne(query);
+            res.send(result);
+        })
+
+        app.post('/user',async(req,res) => {
+            const data = req.body;
+            const query = {email : data.email};
+            const isExist = await userCollections.findOne(query);
+            if(isExist){
+                return res.send({message:'user already exists',insertedId:null})
+            }
+            const result = await userCollections.insertOne(data);
+            res.send(result);
+        })
 
         app.get('/menu',async(req,res) => {
             const result = await menuCollections.find().toArray();
@@ -44,9 +80,17 @@ async function run() {
             res.send(result);
         })
         app.get('/cart',async(req,res) => {
-            const result = await cartCollections.find().toArray();
+            const email = req.query.email
+            const query = {userEmail:email}
+            const result = await cartCollections.find(query).toArray();
             res.send(result)
         });
+        app.delete('/cart/:id',async(req,res) => {
+            const id = req.params.id
+            const query = {_id: new ObjectId(id)}
+            const result = await cartCollections.deleteOne(query);
+            res.send(result);
+        })
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
