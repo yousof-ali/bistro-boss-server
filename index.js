@@ -36,6 +36,7 @@ async function run() {
         const menuCollections = client.db('bostrobossDB').collection('menu');
         const cartCollections = client.db('bostrobossDB').collection('cart');
         const userCollections = client.db('bostrobossDB').collection('users');
+        const paymentCollections = client.db('bostrobossDB').collection('payments');
 
        
        const verifyToken = (req,res,next) => {
@@ -76,12 +77,39 @@ async function run() {
             currency:'usd',
             payment_method_types:['card']
         });
+        console.log(amount)
         res.send({
             clientSecret:paymentIntent.client_secret
         })
     })
 
 
+    app.post('/payments',async(req,res) => {
+        
+        const paymentData = req.body;
+        const paymentResult = await paymentCollections.insertOne(paymentData);
+
+        // dlelete cart data 
+        const query = {_id:{
+            $in: paymentData.cartIds.map(id => new ObjectId(id))
+        }}
+        const deleteResult = await cartCollections.deleteMany(query);
+        res.send({deleteResult,paymentResult})
+    })
+
+    app.get('/payments/:email',verifyToken,async(req,res) => {
+        const email = req.params.email
+        const query = {email : email}
+        console.log(email);
+        console.log(req.decoded)
+        if(email !== req.decoded.email){
+            
+            return res.status(403).send({message:'forbidden access'})
+        }
+        const result = await paymentCollections.find(query).toArray();
+        console.log(result)
+        res.send(result);
+    })
         app.post('/jwt',async(req,res) => {
             const user = req.body;
             const token = jwt.sign(user,process.env.ACCESS_TOKEN_SECRET,{expiresIn:'1h'})
